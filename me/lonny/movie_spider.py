@@ -1,4 +1,5 @@
-# encoding=utf8
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 多线程爬取电影天堂最新电影列表
 
@@ -7,15 +8,15 @@
 3.访问详情地址，提取电影信息
 
 """
+import os
 import threading
 import time
-import os
-from Queue import Queue
+from queue import Queue
 
 import requests
 
-from logger import get_logger
-from re_utils import *
+from me.lonny.logger import get_logger
+from me.lonny.re_utils import *
 
 logger = get_logger('movie', 'debug.log')
 
@@ -25,8 +26,6 @@ class Spider(threading.Thread):
     1.从输入队列中提取电影详情url请求并提取有效信息
     2.将有效信息放入输出队列中供输出线程记录
     """
-    __in_lock = threading.Lock()
-    __out_lock = threading.Lock()
 
     def __init__(self, in_queue, out_queue):
         super(Spider, self).__init__()
@@ -35,24 +34,15 @@ class Spider(threading.Thread):
 
     def run(self):
         while True:
-            url = None
-            try:
-                Spider.__in_lock.acquire()
-                if self.in_queue.empty():
-                    logger.debug('in_queue empty.{0} exiting...'.format(threading.current_thread().getName()))
-                    break
-                else:
-                    url = self.in_queue.get()
-            finally:
-                Spider.__in_lock.release()
+            if self.in_queue.empty():
+                logger.debug('in_queue empty.{0} exiting...'.format(threading.current_thread().getName()))
+                break
+            else:
+                url = self.in_queue.get()
 
             if url:
                 result = Spider.process(url)
-                try:
-                    Spider.__out_lock.acquire()
-                    self.out_queue.put(result)
-                finally:
-                    Spider.__out_lock.release()
+                self.out_queue.put(result)
 
     @staticmethod
     def process(url):
@@ -76,14 +66,14 @@ class Writer(threading.Thread):
         self.queue.put(self.__exit)
 
     def run(self):
-        with open(self.filename, 'w') as f:
+        with open(self.filename, 'wb') as f:
             while True:
                 data = self.queue.get()
                 if not data:
                     continue
                 if data is self.__exit:
                     break
-                f.write(data)
+                f.write(data.encode('utf8'))
                 logger.debug('write file:{0}'.format(data))
 
 
@@ -102,7 +92,7 @@ def do_request(url):
         logger.debug('status code:{0}'.format(resp.status_code))
         return resp.text
     except requests.exceptions.RequestException as e:
-        logger.debug('{0}:request exception {1}'.format(url, e.message))
+        logger.debug('{0}:request exception {1}'.format(url, e.response))
         return ''
 
 
@@ -154,9 +144,6 @@ def main():
     writer.stop()
     writer.join()
 
-    while threading.activeCount() != 1:
-        # 等所有其他线程停止
-        pass
     logger.debug('all done({0}s).'.format(time.time() - start))
 
 

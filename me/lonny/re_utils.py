@@ -1,4 +1,5 @@
-# encoding=utf8
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import re
 
@@ -42,7 +43,7 @@ def extract_urls(html):
     host = "http://www.ygdy8.net"
     for seg in segments:
         result = result + host + seg + '\n'
-    return result.encode('utf8')
+    return result
 
 
 # 提取电影详情
@@ -67,4 +68,4 @@ def extract_details(html):
                     field = field + ','
         fields.append(field)
         details = ''.join(map(lambda x: '"' + x + '";', fields)) + '\n'
-    return details.encode('utf8')
+    return details
